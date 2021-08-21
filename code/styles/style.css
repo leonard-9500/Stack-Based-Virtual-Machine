@@ -1,0 +1,73 @@
+/* Program: style.css
+ * Programmer: Leonard Michel
+ * Start Date: 06.12.2020
+ * Last Change: 06.12.2020
+ * End Date: /
+ * License: /
+ * Version: 0.0.0.0
+*/
+
+:root
+{
+	/*    style variant weight size/height stretch |-------font-family---------|*/
+	/* font: normal normal normal 14px/normal 100% Liberation Sans; */
+	font: 14px Liberation Sans;
+
+	/* Variables */
+	--colTextMain: #000000;
+	--colTextHeadingsAll: #ffa641;
+	--colBackgroundMain: #ffffff;
+	--colBackgroundAccent: #ffa641;
+	--colNavMain: #000000;
+}
+
+body
+{
+	width: 100%;
+	height: 100vh;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	grid-template-rows: 1fr 1fr;
+}
+
+/* text area */
+
+textarea
+{
+	font: 14px Consolas;
+	font-weight: bold;
+	resize: none;
+	background-color: #222222;
+	border: 0px;
+	margin: 0px;
+	padding: 0px;
+	color: white;
+	outline: none;
+}
+
+#texteditor
+{
+	grid-column: 1;
+	grid-row: 1;
+	width: 50vw;
+	height: 50vh;
+	/* This only displayes the text as uppercase. Upon copying it is still in the form the user has input it. */
+	text-transform: uppercase;
+}
+
+#textoutput
+{
+	grid-column: 2;
+	grid-row: 1;
+	width: 50vw;
+	height: 50vh;
+}
+
+#canvas
+{
+	display: none;
+}
