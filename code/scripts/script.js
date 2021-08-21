@@ -249,154 +249,211 @@ class SBVM
 		this.saLow = 0x0;
 		this.saHigh = 0x4f;
 		// How many cycles the chip executes per second. So about 5Hz.
-		this.clockSpeed = 1 / 1;
+		this.clockSpeed = 1000 / 5;
 		this.lastCycle = Date.now();
+		// The delay timer. When greater than zero, the program waits the specified number of milliseconds before proceeding execution.
+		this.DT = 0;
+		this.audio = new Audio("audio/sbvm-tone.mp3");
+		this.audioIsReady = false;
+		this.audio.addEventListener("canplaythrough", function () { this.audioIsReady = true; });
 	}
 
 	execute(cycles)
 	{
-		while (cycles > 0)
+		// Only execute cycle if delay timer is 0
+		if (this.DT == 0)
 		{
-			let instruction = this.memory[this.PC];
-			if (this.dev)
+			while (cycles > 0)
 			{
-				console.clear();
-				console.log("Memory Address Instruction");
-				for (let i = 0; i < this.memory.length; i++)
+				let instruction = this.memory[this.PC];
+				if (this.dev)
 				{
-					if (this.memory[i] != null && this.memory[i] != 0)
+					console.clear();
+					console.log("Memory Address Instruction");
+					for (let i = 0; i < this.memory.length; i++)
 					{
-						console.log(i.toString().padStart(14, " ") + " " + this.memory[i].toString().toUpperCase());
-					}
-				}
-				console.log("Stack");
-				if (this.S.length > 0)
-				{
-					for (let i = 0; i < this.S.length; i++)
-					{
-						if (this.S[i] != null)
+						if (this.memory[i] != null && this.memory[i] != 0)
 						{
-							console.log(i.toString().padStart(5, " "));
+							console.log(i.toString().padStart(14, " ") + " " + this.memory[i].toString().toUpperCase());
 						}
 					}
+					console.log("Stack");
+					if (this.S.length > 0)
+					{
+						for (let i = 0; i < this.S.length; i++)
+						{
+							if (this.S[i] != null)
+							{
+								console.log(i.toString().padStart(5, " "));
+							}
+						}
 
-					for (let i = 0; i < this.S.length; i++)
-					{
-						if (this.S[i] != null)
+						for (let i = 0; i < this.S.length; i++)
 						{
-							//console.log(this.S[i].toString().toUpperCase().padStart(5, " "));
+							if (this.S[i] != null)
+							{
+								//console.log(this.S[i].toString().toUpperCase().padStart(5, " "));
+							}
 						}
 					}
 				}
+
+				if (instruction == null || instruction == 0)
+				{
+					if (this.dev) { console.log("No instruction.\n"); };
+					this.movePC(1);
+				}
+				else if (instruction.toString().slice(0, 2) == "//")
+				{
+					if (this.dev) { console.log("Comment.\n"); };
+					this.movePC(1);
+				}
+				else
+				{
+					let token = instruction.toString().toUpperCase().split(" ");
+					//console.log(token[0]);
+					switch (token[0])
+					{
+						case "PUSH":
+							{
+								this.S.push(parseInt(token[1]));
+								this.movePC(1);
+								if (this.dev) { console.log("Pushed " + token[1] + " onto the Stack.\n"); };
+							}
+							break;
+						case "POP":
+							{
+								if (this.S.length > 0)
+								{
+									let n = this.S.pop();
+									if (this.dev) {console.log("Popped " + n + " off the Stack.\n");};
+								}
+								this.movePC(1);
+							}
+							break;
+						case "ADD":
+							{
+								// If the stack has at least 2 items
+								if (this.S.length > 1)
+								{
+									let a = this.S.pop();
+									let b = this.S.pop();
+
+									this.S.push(a+b);
+								}
+								this.movePC(1);
+							}
+							break;
+						case "IFEQ":
+							{
+								// If the stack is empty or the top-most item is 0.
+								if (this.S.length == 0 || this.S[this.S.length] == 0)
+								{
+									this.movePC(1);
+								}
+								else
+								{
+									this.PC = parseInt(token[1]);
+								}
+							}
+							break;
+						case "JUMP":
+							{
+								if (parseInt(token[1]) >= this.saLow && parseInt(token[1]) <= this.saHigh)
+								{
+									// Move the program counter by difference of the address to goto and the current address. e.g. pc:10 address to goto:5 = 5-10 = -5
+									// So the program counter will go 5 lines back.
+									this.movePC(parseInt(token[1])-this.PC)
+								}
+								else
+								{
+									if (this.dev) {console.log("Unable to jump to memory address 0x" + token[1].toString(16).toUpperCase() + ".\n");};
+								}
+								this.movePC(1);
+							}
+							break;
+						case "PRINT":
+							{
+								if (this.S.length > 0)
+								{
+									let i = this.S.length-1;
+
+									// Print ascii char corresponding to supplied value.
+									let asciicode = this.S[i];
+									console.log(asciicode);
+									// This code corresponds to the bell so a sound is played when "printing" this char
+									// instead of actually printing it to the screen.
+									if (parseInt(asciicode) == 7)
+									{
+										this.audio.play();
+										/* This if never becomes true for some reason...
+										// play audio
+										if (this.audioIsReady == true)
+										{
+											this.audio.play();
+										}
+										*/
+									}
+									else
+									{
+										textoutput.value += String.fromCharCode(asciicode);
+									}
+									if (this.dev) { console.log("print statement output.\n"); };
+								}
+								this.movePC(1);
+							}
+							break;
+						case "DUP":
+							{
+								if (this.S.length > 0)
+								{
+									let a = this.S[this.S.length];
+									this.S.push(a);
+								}
+								else
+								{
+									this.S.push(0);
+								}
+								this.movePC(1);
+							}
+							break;
+						case "WAIT":
+							{
+								this.DT = parseInt(token[1]);
+							}
+						default:
+							break;
+					}
+				}
+				cycles--;
 			}
-
-			if (instruction == null)
+		}
+		else
+		{
+			// Decrease the delay timer until it is zero.
+			if (this.DT > 0)
 			{
-				console.log("No instruction.\n")
-				this.movePC(1);
+				this.DT -= tp1 - sbvm.lastCycle;
+				console.log(this.DT);
 			}
 			else
 			{
-				let token = instruction.toString().toUpperCase().split(" ");
-				console.log(token[1]);
-				switch (token[0])
-				{
-					case "PUSH":
-						{
-							this.S.push(parseInt(token[1]));
-							this.movePC(1);
-							if (this.dev) { console.log("Pushed " + token[1] + " onto the Stack.\n"); };
-						}
-						break;
-					case "POP":
-						{
-							if (this.S.length > 0)
-							{
-								let n = this.S.pop();
-								console.log("Popped " + n + " off the Stack.\n");
-							}
-							this.movePC(1);
-						}
-						break;
-					case "ADD":
-						{
-							// If the stack has at least 2 items
-							if (this.S.length > 1)
-							{
-								let a = this.S.pop();
-								let b = this.S.pop();
-
-								this.S.push(a+b);
-							}
-							this.movePC(1);
-						}
-						break;
-					case "IFEQ":
-						{
-							// If the stack is empty or the top-most item is 0.
-							if (this.S.length == 0 || this.S[this.S.length] == 0)
-							{
-								this.movePC(1);
-							}
-							else
-							{
-								this.PC = parseInt(token[1]);
-							}
-						}
-						break;
-					case "JUMP":
-						{
-							if (parseInt(token[1]) >= this.saLow && parseInt(token[1]) <= this.saHigh)
-							{
-								this.PC = parseInt(token[1]);
-							}
-							else
-							{
-								console.log("Unable to jump to memory address 0x" + token[1].toString(16).toUpperCase() + ".\n");
-							}
-							this.movePC(1);
-						}
-						break;
-					case "PRINT":
-						{
-							if (this.S.length > 0)
-							{
-								let i = this.S.length-1;
-
-								// Print ascii char corresponding to supplied value.
-								let asciicode = this.S[i];
-								textoutput.value += String.fromCharCode(asciicode);
-								if (this.dev) { console.log("print statement output.\n"); };
-							}
-							this.movePC(1);
-						}
-						break;
-					case "DUP":
-						{
-							if (this.S.length > 0)
-							{
-								let a = this.S[this.S.length];
-								this.S.push(a);
-							}
-							else
-							{
-								this.S.push(0);
-							}
-							this.movePC(1);
-						}
-						break;
-					default:
-						break;
-				}
+				this.DT = 0;
+				this.movePC(1);
 			}
-			cycles--;
 		}
 	}
 
 	// Move the Program Counter forwards (+n) or backwards (-n).
 	movePC(n)
 	{
-		if (this.PC+n <= this.programEndAddress && this.PC+n >= this.programStartAddress) { this.PC += n; };
+		// If program counter has reached end of program load the program and start again.
+		if (this.PC == this.programEndAddress)
+		{
+			this.PC = this.programStartAddress;
+			this.load();
+		}
+		else if (this.PC+n <= this.programEndAddress && this.PC+n >= this.programStartAddress) { this.PC += n; };
 		/*
 		if (this.PC+n <= this.saHigh)
 		{
@@ -416,6 +473,20 @@ class SBVM
 		if (this.dev) {console.log("Loading\n");};
 		let lines = texteditor.value.split("\n");
 
+		// Remove any empty lines
+		for (let i = 0; i < lines.length; i++)
+		{
+			// || lines[i].slice(0, 2).toString() == "//"
+			if (lines[i] == null || lines[i] == "" || lines[i].slice(0, 2) == "//")
+			{
+				//console.log(lines[i].slice(0, 2));
+				lines.splice(i, 1);
+				i--;
+				//console.log(lines);
+			}
+		}
+
+		// Store the command from each line in memory. Excluding any line numbers written by the user.
 		for (let i = 0; i < lines.length; i++)
 		{
 			let token = lines[i].toString().toUpperCase().split(" ");
@@ -444,7 +515,7 @@ class SBVM
 		this.saLow = 0x0;
 		this.saHigh = 0x4f;
 		// How many cycles the chip executes per second. So about 5Hz.
-		this.clockSpeed = 1 / 1;
+		this.clockSpeed = 1000 / 500;
 		this.lastCycle = Date.now();
 
 		textoutput.value = "";
