@@ -249,7 +249,7 @@ class SBVM
 		this.saLow = 0x0;
 		this.saHigh = 0x4f;
 		// How many cycles the chip executes per second. So about 5Hz.
-		this.clockSpeed = 1000 / 5;
+		this.clockSpeed = 1000 / 500;
 		this.lastCycle = Date.now();
 		// The delay timer. When greater than zero, the program waits the specified number of milliseconds before proceeding execution.
 		this.DT = 0;
@@ -284,7 +284,9 @@ class SBVM
 						{
 							if (this.S[i] != null)
 							{
-								console.log(i.toString().padStart(5, " "));
+								console.log("Stack.\n");
+								console.log(this.S[i]);
+								//console.log(i.toString().padStart(5, " "));
 							}
 						}
 
@@ -336,8 +338,8 @@ class SBVM
 								// If the stack has at least 2 items
 								if (this.S.length > 1)
 								{
-									let a = this.S.pop();
-									let b = this.S.pop();
+									let a = parseInt(this.S.pop());
+									let b = parseInt(this.S.pop());
 
 									this.S.push(a+b);
 								}
@@ -347,7 +349,7 @@ class SBVM
 						case "IFEQ":
 							{
 								// If the stack is empty or the top-most item is 0.
-								if (this.S.length == 0 || this.S[this.S.length] == 0)
+								if (this.S.length == 0 || this.S[this.S.length-1] == 0)
 								{
 									this.movePC(1);
 								}
@@ -380,7 +382,7 @@ class SBVM
 
 									// Print ascii char corresponding to supplied value.
 									let asciicode = this.S[i];
-									console.log(asciicode);
+									//console.log(asciicode);
 									// This code corresponds to the bell so a sound is played when "printing" this char
 									// instead of actually printing it to the screen.
 									if (parseInt(asciicode) == 7)
@@ -396,6 +398,7 @@ class SBVM
 									}
 									else
 									{
+										this.audio.pause();
 										textoutput.value += String.fromCharCode(asciicode);
 									}
 									if (this.dev) { console.log("print statement output.\n"); };
@@ -407,7 +410,7 @@ class SBVM
 							{
 								if (this.S.length > 0)
 								{
-									let a = this.S[this.S.length];
+									let a = this.S[this.S.length-1];
 									this.S.push(a);
 								}
 								else
@@ -434,7 +437,7 @@ class SBVM
 			if (this.DT > 0)
 			{
 				this.DT -= tp1 - sbvm.lastCycle;
-				console.log(this.DT);
+				//console.log(this.DT);
 			}
 			else
 			{
